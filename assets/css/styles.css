@@ -278,14 +278,17 @@ figcaption {
 }
 
 .info-dialog {
-  width: min(920px, calc(100vw - 24px));
-  max-height: min(820px, calc(100vh - 24px));
+  width: min(920px, calc(100dvw - 24px));
+  max-width: calc(100dvw - 24px);
+  height: min(820px, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
   color: var(--text);
   padding: 0;
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .info-dialog::backdrop {
@@ -314,7 +317,11 @@ figcaption {
   display: grid;
   gap: 18px;
   padding: 16px;
-  overflow: auto;
+  max-height: calc(100% - 64px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dialog-body section {
@@ -337,6 +344,13 @@ figcaption {
   color: var(--muted);
 }
 
+.dialog-body mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
 .dialog-body pre {
   overflow: auto;
   border: 1px solid var(--border);
@@ -349,12 +363,15 @@ figcaption {
   display: grid;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .summary-table div {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1.4fr;
+  min-width: 720px;
 }
 
 .summary-table span,
@@ -400,8 +417,33 @@ figcaption {
     width: 100%;
   }
 
+  .info-dialog {
+    width: 100dvw;
+    max-width: 100dvw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .dialog-header {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .dialog-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .dialog-body {
+    max-height: calc(100dvh - 62px);
+    padding: 12px;
+    gap: 14px;
+  }
+
   .summary-table div {
-    grid-template-columns: 1fr;
+    min-width: 640px;
   }
 
   .summary-table span,
