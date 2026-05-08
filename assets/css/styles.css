@@ -346,9 +346,13 @@ figcaption {
 
 .dialog-body mjx-container {
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   padding-bottom: 2px;
+}
+
+.dialog-body mjx-container[jax="SVG"] > svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .dialog-body pre {
@@ -363,15 +367,12 @@ figcaption {
   display: grid;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 .summary-table div {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1.4fr;
-  min-width: 720px;
 }
 
 .summary-table span,
@@ -442,12 +443,21 @@ figcaption {
     gap: 14px;
   }
 
+  .dialog-body mjx-container {
+    font-size: 0.82em;
+  }
+
   .summary-table div {
-    min-width: 640px;
+    grid-template-columns: 1fr;
   }
 
   .summary-table span,
   .summary-table strong {
     border-right: 0;
+  }
+
+  .summary-table strong,
+  .summary-table span {
+    overflow-wrap: anywhere;
   }
 }
