@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Geometric tracing from uploaded images using edge maps, skeletons, and spline approximations.">
+    <title>Geometric Tracing</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [["\\(", "\\)"]],
+          displayMath: [["\\[", "\\]"]]
+        },
+        svg: { fontCache: "global" }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" defer></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+    <script async src="https://docs.opencv.org/4.10.0/opencv.js"></script>
+    <script type="module" src="assets/js/app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Geometric Tracing</h1>
+      </div>
+      <div class="header-actions">
+        <button id="howItWorksButton" type="button">How does it work?</button>
+        <span id="opencvStatus" class="status-pill">Loading</span>
+      </div>
+    </header>
+
+    <main class="app-grid">
+      <section class="panel controls-panel" aria-label="Upload and method controls">
+        <div class="panel-heading">
+          <h2>Input</h2>
+          <p>Upload a JPG or PNG to trace its geometric structure.</p>
+        </div>
+
+        <label id="dropZone" class="drop-zone" for="imageInput">
+          <input id="imageInput" type="file" accept="image/png,image/jpeg">
+          <span class="drop-icon">+</span>
+          <span>Drag an image here, or click to upload</span>
+        </label>
+
+        <div class="method-row" role="radiogroup" aria-label="Approximation method">
+          <label>
+            <input type="radio" name="method" value="skeleton" checked>
+            <span>Piecewise Linear Approximation</span>
+          </label>
+          <label>
+            <input type="radio" name="method" value="spline">
+            <span>Parametric B-Spline Approximation</span>
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button id="processButton" class="primary-button" type="button" disabled>Process image</button>
+          <button id="downloadButton" type="button" disabled>Download equations</button>
+        </div>
+      </section>
+
+      <section class="panel preview-panel" aria-label="Image previews">
+        <div class="panel-heading">
+          <h2>Image And Edges</h2>
+          <p>Original upload and black background with white detected edges.</p>
+        </div>
+        <div class="preview-grid">
+          <figure>
+            <canvas id="sourceCanvas" aria-label="Uploaded source image"></canvas>
+            <figcaption>Original</figcaption>
+          </figure>
+          <figure>
+            <canvas id="edgeCanvas" aria-label="Black and white edge image"></canvas>
+            <figcaption>Edge image</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel plot-panel" aria-label="Line image plot">
+        <div class="panel-heading">
+          <h2>Line Image Plot</h2>
+          <p>Skeleton points are shown in light grey with extracted lines or splines overlaid</p>
+        </div>
+        <div id="linePlot" class="plot" role="img" aria-label="Line image plot"></div>
+      </section>
+
+      <section class="panel equations-panel" aria-label="Detected equations">
+        <div class="panel-heading">
+          <h2>Equations</h2>
+          <p>Cartesian line equations or parametric spline descriptions</p>
+        </div>
+        <div id="equationList" class="equation-list" aria-live="polite">
+          <p class="muted">Upload an image to begin.</p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="howItWorksDialog" class="info-dialog" aria-labelledby="howItWorksTitle">
+      <div class="dialog-header">
+        <h2 id="howItWorksTitle">How Geometric Tracing Works</h2>
+        <button id="closeHowItWorksButton" class="icon-button" type="button" aria-label="Close">Close</button>
+      </div>
+      <div class="dialog-body">
+        <section>
+          <p>Geometric Tracing converts an image into explicit mathematical geometry. The pipeline begins with a discrete image, extracts its structural edges, reduces those edges to one-pixel-wide centerlines, interprets the result as a graph, and finally converts the geometry into either piecewise linear equations or smooth parametric spline curves.</p>
+        </section>
+
+        <section>
+          <h3>Image as a Mathematical Object</h3>
+          <p>A digital image can be viewed mathematically as a discrete function defined on a rectangular grid of pixels.</p>
+          <p>For a color image, each pixel contains three intensity values:</p>
+          \[
+            F(x,y)=\big(R(x,y),G(x,y),B(x,y)\big)
+          \]
+          <p>where \(x,y\) are pixel coordinates, and \(R,G,B\) are red, green and blue channel intensities. Thus, an RGB image is no more than a vector-valued discrete field.</p>
+          <p>In continuous mathematics, one often imagines an idealized image as a continuous function:</p>
+          \[
+            F:\mathbb{R}^2\to\mathbb{R}^3
+          \]
+          <p>but an actual digital image only samples this function on a finite lattice:</p>
+          \[
+            (x,y)\in\mathbb{Z}^2
+          \]
+          <p>This distinction matters because operations such as differentiation and curve fitting must ultimately be approximated numerically on a discrete grid.</p>
+          <p>After grayscale conversion, the image becomes a scalar field:</p>
+          \[
+            I(x,y)
+          \]
+          <p>which assigns a single intensity value to each pixel.</p>
+        </section>
+
+        <section>
+          <h3>Grayscale Conversion</h3>
+          <p>Edge detection is fundamentally based on intensity variation, so the RGB image is first converted into a scalar luminance image.</p>
+          <p>Here we use the standard luminance weighting:</p>
+          \[
+            I(x,y)=0.299R(x,y)+0.587G(x,y)+0.114B(x,y)
+          \]
+          <p>These coefficients reflect human visual sensitivity, where the eye is more sensitive to green light than blue light.</p>
+          <p>The result is a scalar intensity field:</p>
+          \[
+            I:\mathbb{Z}^2\to\mathbb{R}
+          \]
+          <p>This is important mathematically because scalar fields can be differentiated. Gradients, directional derivatives, and edge detection are all defined naturally on scalar intensity functions.</p>
+        </section>
+
+        <section>
+          <h3>Gaussian Smoothing</h3>
+          <p>Real images contain noise, texture, compression artifacts and pixel-level fluctuations. Direct differentiation of noisy data produces unstable gradients.</p>
+          <p>Before edge detection, the image is smoothed with a Gaussian filter. The continuous 2D Gaussian kernel is:</p>
+          \[
+            G_\sigma(x,y)=\frac{1}{2\pi\sigma^2}\exp\left(-\frac{x^2+y^2}{2\sigma^2}\right)
+          \]
+          <p>The smoothed image is obtained by convolution:</p>
+          \[
+            I_s=G_\sigma * I
+          \]
+          <p>where \(*\) denotes convolution.</p>
+          <p>We use kernel size \(5\times5\) and standard deviation \(\sigma=1.4\).</p>
+          <p>Gaussian smoothing acts as a low-pass filter. High-frequency variations, such as noise and fine texture, are attenuated, while larger geometric structures remain. This stabilization is essential because numerical differentiation amplifies high-frequency noise.</p>
+        </section>
+
+        <section>
+          <h3>Image Gradients</h3>
+          <p>Edges occur where intensity changes rapidly. To measure local intensity variation, partial derivatives are computed:</p>
+          \[
+            I_x=\frac{\partial I}{\partial x},\qquad I_y=\frac{\partial I}{\partial y}
+          \]
+          <p>Together these form the image gradient:</p>
+          \[
+            \nabla I=\left(I_x,I_y\right)
+          \]
+          <p>The gradient vector points in the direction of maximal intensity increase. The Euclidean gradient magnitude is:</p>
+          \[
+            |\nabla I|=\sqrt{I_x^2+I_y^2}
+          \]
+          <p>Large gradient magnitude indicates a likely edge. In this case however, gradients are computed inside OpenCV's Canny implementation using its default \(3\times3\) Sobel derivative aperture, and the thresholding step uses the default L1-style magnitude:</p>
+          \[
+            M_1(x,y)=|I_x(x,y)|+|I_y(x,y)|
+          \]
+          <p>This differs slightly from the Euclidean L2 magnitude above, but it serves the same purpose and assigns larger values to pixels where intensity changes sharply.</p>
+          <p>The gradient direction is:</p>
+          \[
+            \theta=\operatorname{atan2}(I_y,I_x)
+          \]
+          <p>which gives the orientation of the edge normal. Because images are discrete, the derivatives are not symbolic derivatives, they are finite-difference approximations. Here, that approximation is specifically OpenCV's default Sobel operator inside <code>cv.Canny</code>.</p>
+        </section>
+
+        <section>
+          <h3>Canny Edge Detection</h3>
+          <p>The app uses the Canny edge detector, a multi-stage algorithm designed to produce thin, stable, well-localized edges.</p>
+          <h4>Gradient Magnitude</h4>
+          <p>The smoothed image gradient is computed using OpenCV's default \(3\times3\) Sobel derivative filters:</p>
+          \[
+            I_x \approx S_x * I_s,\qquad I_y \approx S_y * I_s
+          \]
+          <p>With the current code, Canny thresholds the default L1 gradient magnitude:</p>
+          \[
+            M_1(x,y)=|I_x(x,y)|+|I_y(x,y)|
+          \]
+          <p>Pixels with large magnitude correspond to strong local intensity transitions.</p>
+          <h4>Non-Maximum Suppression</h4>
+          <p>Edges should be thin curves, not thick bands. For each pixel, the algorithm compares the gradient magnitude with neighboring pixels along the gradient direction. If the pixel is not a local maximum, it is suppressed:</p>
+          \[
+            |\nabla I(x,y)| < \text{neighbor maximum}\quad\Rightarrow\quad 0
+          \]
+          <p>This reduces broad gradient regions to approximately one-pixel-wide edge candidates.</p>
+          <h4>Double Thresholding</h4>
+          <p>Two thresholds are applied to the Canny gradient response: lower threshold \(50\) and upper threshold \(150\).</p>
+          <ul>
+            <li><strong>strong edges</strong>: \(M_1\ge150\)</li>
+            <li><strong>weak edges</strong>: \(50\le M_1<150\)</li>
+            <li><strong>non-edges</strong>: \(M_1<50\)</li>
+          </ul>
+          <h4>Hysteresis</h4>
+          <p>Weak edges are retained only if connected to strong edges. This suppresses isolated noise responses while preserving continuous contours.</p>
+          <p>The final edge image is therefore a binary subset of the pixel grid:</p>
+          \[
+            E\subseteq\mathbb{Z}^2
+          \]
+          <p>where each element of \(E\) is classified as an edge pixel. OpenCV stores this result as an 8-bit image whose pixels are either \(0\) or \(255\). We then map values above \(80\) to \(1\), so Canny's white edge pixels become binary foreground pixels and black pixels become background.</p>
+        </section>
+
+        <section>
+          <h3>Binary Edge Image</h3>
+          <p>After edge detection, the image is represented as a binary function:</p>
+          \[
+            B(x,y)\in\{0,1\}
+          \]
+          <p>where \(B(x,y)=1\) means the pixel belongs to an edge, and \(B(x,y)=0\) means background.</p>
+          <p>Equivalently, the edge image may be viewed as a set:</p>
+          \[
+            A=\{(x,y):B(x,y)=1\}
+          \]
+          <p>In code, this is a typed array where each pixel is either \(0\) or \(1\). This set-theoretic interpretation is important because later stages operate on geometry rather than color intensities.</p>
+        </section>
+
+        <section>
+          <h3>Skeletonization / Medial Axis</h3>
+          <p>The edge image still contains curves with thickness. To extract a cleaner geometric representation, we perform skeletonization</p>
+          <p>Conceptually, the skeleton is a topology-preserving thinning of the binary set \(A\).</p>
+          <p>The idealized geometric intuition comes from the medial axis, points lying at the centers of maximal disks contained within the shape. Equivalently, skeleton points are approximately equidistant from nearby boundaries.</p>
+          <p>The implementation uses the Zhang-Suen thinning algorithm. It iteratively removes eligible foreground pixels in two sub-iterations. For each foreground pixel \(p\), the algorithm examines its 8-neighborhood:</p>
+          \[
+            (p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9)
+          \]
+          <p>It computes the neighbor count:</p>
+          \[
+            N(p)=\sum_{i=2}^{9}p_i
+          \]
+          <p>and the number of \(0\to1\) transitions around the ordered neighborhood:</p>
+          \[
+            S(p)=\#\{i:p_i=0,\;p_{i+1}=1\}
+          \]
+          <p>Pixels are removed only when conditions such as \(2\le N(p)\le6\) and \(S(p)=1\) hold, along with pass-specific connectivity constraints. These tests thin strokes while preserving branch connectivity.</p>
+          <p>The result is a one-pixel-wide centerline representation of the geometry.</p>
+        </section>
+
+        <section>
+          <h3>Skeleton as a Graph</h3>
+          <p>The skeleton image is interpreted as a graph:</p>
+          \[
+            G=(V,E)
+          \]
+          <p>where \(V\) is the set of skeleton pixels, and \(E\) connects neighboring pixels using 8-neighbor connectivity. Thus, each pixel may connect horizontally, vertically, or diagonally.</p>
+          <p>For a node \(v\in V\), the degree is the number of neighboring skeleton pixels connected to it.</p>
+          <ul>
+            <li><strong>endpoint</strong>: \(\deg(v)=1\)</li>
+            <li><strong>chain point</strong>: \(\deg(v)=2\)</li>
+            <li><strong>junction</strong>: \(\deg(v)\ge3\)</li>
+          </ul>
+          <p>Paths are traced through sequences of chain points between endpoints and junctions. This converts the skeleton into ordered geometric paths rather than isolated pixels.</p>
+        </section>
+
+        <section>
+          <h3>Method A: Piecewise Linear Approximation</h3>
+          <p>Each traced path is represented as an ordered sequence of points:</p>
+          \[
+            P=(p_0,p_1,\dots,p_n)
+          \]
+          <p>where:</p>
+          \[
+            p_i=(x_i,y_i)
+          \]
+          <p>The goal is to simplify the path while preserving its geometry. We use a tolerance-based simplification similar to the Ramer-Douglas-Peucker algorithm.</p>
+          <p>A point \(p_i\) may be removed if its perpendicular distance to the approximating segment is sufficiently small:</p>
+          \[
+            d(p_i,\text{line segment})<\varepsilon
+          \]
+          <p>where \(\varepsilon\) is a geometric tolerance.</p>
+          <p>The resulting simplified polyline consists of straight segments between retained vertices. For a segment joining:</p>
+          \[
+            (x_1,y_1)\quad\text{and}\quad(x_2,y_2)
+          \]
+          <p>the slope is:</p>
+          \[
+            m=\frac{y_2-y_1}{x_2-x_1}
+          \]
+          <p>and the intercept is:</p>
+          \[
+            b=y_1-mx_1
+          \]
+          <p>giving the Cartesian equation:</p>
+          \[
+            y=mx+b
+          \]
+          <p>For vertical segments:</p>
+          \[
+            x=c
+          \]
+          <p>This method produces a piecewise linear approximation of the image geometry. Thus straight boundaries are represented exactly, while curved boundaries are approximated by many small linear segments.</p>
+        </section>
+
+        <section>
+          <h3>Method B: Parametric B-Spline Approximation</h3>
+          <p>Many shapes are inherently curved and cannot be represented compactly by straight segments.</p>
+          <p>Instead of expressing geometry as:</p>
+          \[
+            y=f(x)
+          \]
+          <p>we use a parametric representation:</p>
+          \[
+            x=x(t),\qquad y=y(t),\qquad t\in[0,1]
+          \]
+          <p>A parametric spline curve is controlled by a sequence of ordered skeleton control points:</p>
+          \[
+            P_0,P_1,\dots,P_n,\qquad P_i=(x_i,y_i)
+          \]
+          <p>In a classical B-spline model, the curve is written as:</p>
+          \[
+            C(t)=\sum_i N_{i,k}(t)P_i
+          \]
+          <p>where \(N_{i,k}(t)\) are B-spline basis functions, \(k\) is the spline degree, and \(P_i\) are control points. This is the mathematical model the interface is named after.</p>
+          <p>The current browser implementation uses a lightweight Catmull-Rom spline interpolation through the ordered skeleton control points. This keeps the app fully static and avoids shipping a large numerical fitting library. For a local segment with neighboring control points \(P_{i-1},P_i,P_{i+1},P_{i+2}\), the sampled curve is:</p>
+          \[
+            C_i(u)=\frac12\left(
+            2P_i+
+            (-P_{i-1}+P_{i+1})u+
+            (2P_{i-1}-5P_i+4P_{i+1}-P_{i+2})u^2+
+            (-P_{i-1}+3P_i-3P_{i+1}+P_{i+2})u^3
+            \right)
+          \]
+          <p>where \(u\in[0,1]\) is the local segment parameter. The app samples these parametric segments to produce the plotted smooth curve.</p>
+          <p>The important mathematical property is that the output is parametric: it does not require the contour to be a single-valued function \(y=f(x)\). Loops, vertical tangents, and curved boundaries can be represented by \(x(t)\) and \(y(t)\) together.</p>
+        </section>
+
+        <section>
+          <h3>Coordinate System</h3>
+          <p>Image coordinates and Cartesian coordinates are usually oriented differently. In image processing, \(x\) increases to the right and \(y\) increases downward. In standard mathematical plotting, \(x\) increases to the right and \(y\) increases upward.</p>
+          <p>We convert traced pixel coordinates into Cartesian-style plot coordinates before computing equations:</p>
+          \[
+            X=x,\qquad Y=-y
+          \]
+          <p>This flips the vertical axis into the conventional mathematical orientation. Thus the equations shown describe the plotted coordinates \((X,Y)\), not the raw canvas coordinates \((x,y)\).</p>
+        </section>
+
+      </div>
+    </dialog>
+  </body>
+</html>
