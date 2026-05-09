@@ -27,6 +27,7 @@ const elements = {
   edgeCanvas: document.querySelector("#edgeCanvas"),
   processButton: document.querySelector("#processButton"),
   downloadButton: document.querySelector("#downloadButton"),
+  desmosButton: document.querySelector("#desmosButton"),
   linePlot: document.querySelector("#linePlot"),
   equationList: document.querySelector("#equationList"),
   methodInputs: [...document.querySelectorAll('input[name="method"]')]
@@ -91,6 +92,7 @@ function bindEvents() {
 
   elements.processButton.addEventListener("click", processCurrentImage);
   elements.downloadButton.addEventListener("click", downloadEquations);
+  elements.desmosButton.addEventListener("click", openInDesmos);
 }
 
 function watchOpenCv() {
@@ -182,6 +184,7 @@ function analyzeAndRender() {
   }
 
   elements.downloadButton.disabled = false;
+  elements.desmosButton.disabled = false;
   const count = state.method === "spline" ? state.analysis.splines.length : state.analysis.segments.length;
   showStatus(`${count} ${state.method === "spline" ? "spline" : "line"}${count === 1 ? "" : "s"} found`);
 }
@@ -190,6 +193,52 @@ function downloadEquations() {
   if (!state.analysis) return;
   const text = state.method === "spline" ? splineText(state.analysis) : skeletonText(state.analysis);
   downloadText(`${state.method}-equations.txt`, text);
+}
+
+function openInDesmos() {
+  if (!state.analysis || !state.processed) return;
+
+  const exportData = buildDesmosExportData();
+  localStorage.setItem("geometricTracing.desmosExport", JSON.stringify(exportData));
+  window.open("desmos-export.html", "_blank");
+}
+
+function buildDesmosExportData() {
+  const base = {
+    app: "Geometric Tracing",
+    exportedAt: new Date().toISOString(),
+    method: state.method,
+    width: state.processed.width,
+    height: state.processed.height
+  };
+
+  if (state.method === "spline") {
+    return {
+      ...base,
+      splines: state.analysis.splines.map((spline) => ({
+        id: spline.spline,
+        points: spline.points.map(toPlainPoint),
+        controlPoints: spline.controlPoints.map(toPlainPoint)
+      }))
+    };
+  }
+
+  return {
+    ...base,
+    segments: state.analysis.segments.map((segment) => ({
+      id: segment.line,
+      equation: segment.equation,
+      point1: toPlainPoint(segment.point1),
+      point2: toPlainPoint(segment.point2)
+    }))
+  };
+}
+
+function toPlainPoint(point) {
+  return {
+    x: Number(point.x.toFixed(6)),
+    y: Number(point.y.toFixed(6))
+  };
 }
 
 function skeletonText(result) {
@@ -234,6 +283,7 @@ function resetDerivedState(width, height) {
   state.processed = null;
   state.analysis = null;
   elements.downloadButton.disabled = true;
+  elements.desmosButton.disabled = true;
   renderEmptyPlot(width, height);
 }
 

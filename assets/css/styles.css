@@ -461,3 +461,94 @@ figcaption {
     overflow-wrap: anywhere;
   }
 }
+
+.desmos-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.desmos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px clamp(14px, 4vw, 32px);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.desmos-header p,
+.desmos-header h1 {
+  margin: 0;
+}
+
+.desmos-header p {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.desmos-header h1 {
+  font-size: clamp(1.45rem, 4vw, 2.25rem);
+}
+
+.desmos-header a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--button);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.desmos-header a:hover {
+  border-color: var(--accent);
+}
+
+.desmos-main {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 12px;
+  gap: 12px;
+}
+
+.desmos-message {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  padding: 10px 12px;
+}
+
+.desmos-calculator {
+  min-height: 560px;
+  height: calc(100dvh - 146px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .desmos-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .desmos-header a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .desmos-calculator {
+    min-height: 520px;
+    height: calc(100dvh - 218px);
+  }
+}

@@ -35,7 +35,7 @@
       <section class="panel controls-panel" aria-label="Upload and method controls">
         <div class="panel-heading">
           <h2>Input</h2>
-          <p>Upload a JPG or PNG to trace its geometric structure.</p>
+          <p>Upload a JPG or PNG and generate equations that recreate it on a graph</p>
         </div>
 
         <label id="dropZone" class="drop-zone" for="imageInput">
@@ -58,13 +58,14 @@
         <div class="toolbar">
           <button id="processButton" class="primary-button" type="button" disabled>Process image</button>
           <button id="downloadButton" type="button" disabled>Download equations</button>
+          <button id="desmosButton" type="button" disabled>Open in Desmos</button>
         </div>
       </section>
 
       <section class="panel preview-panel" aria-label="Image previews">
         <div class="panel-heading">
           <h2>Image And Edges</h2>
-          <p>Original upload and black background with white detected edges.</p>
+          <p>Original upload and black background with white detected edges</p>
         </div>
         <div class="preview-grid">
           <figure>

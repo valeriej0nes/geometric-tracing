@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Desmos export view for Geometric Tracing.">
+    <title>Geometric Tracing Desmos Export</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="https://www.desmos.com/api/v1.13/calculator.js?apiKey=435b2902815d4f5b81063265d40466d4"></script>
+    <script type="module" src="assets/js/desmosExport.js"></script>
+  </head>
+  <body class="desmos-page">
+    <header class="desmos-header">
+      <div>
+        <p>Geometric Tracing</p>
+        <h1>Desmos Export</h1>
+      </div>
+      <a href="index.html">Back to app</a>
+    </header>
+    <main class="desmos-main">
+      <div id="desmosMessage" class="desmos-message" role="status">Loading traced geometry...</div>
+      <div id="calculator" class="desmos-calculator" aria-label="Desmos graphing calculator"></div>
+    </main>
+  </body>
+</html>
