@@ -3,12 +3,15 @@ const STORAGE_KEY = "geometricTracing.desmosExport";
 
 const elements = {
   calculator: document.querySelector("#calculator"),
-  message: document.querySelector("#desmosMessage")
+  message: document.querySelector("#desmosMessage"),
+  closeButton: document.querySelector("#closeExportButton")
 };
 
 init();
 
 function init() {
+  elements.closeButton.addEventListener("click", closeExportTab);
+
   const data = readExportData();
 
   if (!data) {
@@ -191,4 +194,12 @@ function desmosNumber(value) {
 
 function showMessage(message) {
   elements.message.textContent = message;
+}
+
+function closeExportTab() {
+  window.close();
+
+  window.setTimeout(() => {
+    window.location.href = "index.html";
+  }, 120);
 }

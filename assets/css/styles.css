@@ -494,7 +494,7 @@ figcaption {
   font-size: clamp(1.45rem, 4vw, 2.25rem);
 }
 
-.desmos-header a {
+.desmos-header button {
   display: inline-flex;
   align-items: center;
   min-height: 42px;
@@ -507,7 +507,7 @@ figcaption {
   white-space: nowrap;
 }
 
-.desmos-header a:hover {
+.desmos-header button:hover {
   border-color: var(--accent);
 }
 
@@ -542,7 +542,7 @@ figcaption {
     flex-direction: column;
   }
 
-  .desmos-header a {
+  .desmos-header button {
     width: 100%;
     justify-content: center;
   }
