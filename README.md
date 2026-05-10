@@ -10,7 +10,7 @@ The app extracts image edges, skeletonizes them into one-pixel-wide centerlines,
 - Black-and-white edge extraction
 - Skeletonized line/curve tracing
 - Piecewise Linear Approximation
-- Parametric B-Spline Approximation
+- Parametric Catmull-Rom Approximation
 - Cartesian-style Plotly visualization
 - Equation and control point display
 - Equation download
