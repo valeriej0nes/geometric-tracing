@@ -105,7 +105,7 @@
       </div>
       <div class="dialog-body">
         <section>
-          <p>Geometric Tracing converts an image into explicit mathematical geometry. The pipeline begins with a discrete image, extracts its structural edges, reduces those edges to one-pixel-wide centerlines, interprets the result as a graph, and finally converts the geometry into either piecewise linear equations or smooth parametric spline curves.</p>
+          <p>Geometric Tracing converts an image into explicit mathematical geometry. The pipeline begins with a discrete image, extracts its structural edges, reduces those edges to one-pixel-wide centerlines, interprets the result as a graph, and finally converts the geometry into either piecewise linear equations or smooth parametric Catmull-Rom spline curves.</p>
         </section>
 
         <section>
@@ -177,10 +177,7 @@
           \[
             |\nabla I|=\sqrt{I_x^2+I_y^2}
           \]
-          <p>Large gradient magnitude indicates a likely edge. In this case however, gradients are computed inside OpenCV's Canny implementation using its default \(3\times3\) Sobel derivative aperture, and the thresholding step uses the default L1-style magnitude:</p>
-          \[
-            M_1(x,y)=|I_x(x,y)|+|I_y(x,y)|
-          \]
+          <p>Large gradient magnitude indicates a likely edge because it marks a rapid change in brightness.</p>
           <p>This differs slightly from the Euclidean L2 magnitude above, but it serves the same purpose and assigns larger values to pixels where intensity changes sharply.</p>
           <p>The gradient direction is:</p>
           \[
@@ -191,8 +188,8 @@
 
         <section>
           <h3>Canny Edge Detection</h3>
-          <p>The app uses the Canny edge detector, a multi-stage algorithm designed to produce thin, stable, well-localized edges.</p>
-          <h4>Gradient Magnitude</h4>
+          <p>Here we use the Canny edge detector, a multi-stage algorithm designed to produce thin, stable, well-localised edges.</p>
+          <h4>Sobel Derivatives and Gradient Response</h4>
           <p>The smoothed image gradient is computed using OpenCV's default \(3\times3\) Sobel derivative filters:</p>
           \[
             I_x \approx S_x * I_s,\qquad I_y \approx S_y * I_s
@@ -315,7 +312,7 @@
         </section>
 
         <section>
-          <h3>Method B: Parametric B-Spline Approximation</h3>
+          <h3>Method B: Parametric Catmull-Rom Spline Approximation</h3>
           <p>Many shapes are inherently curved and cannot be represented compactly by straight segments.</p>
           <p>Instead of expressing geometry as:</p>
           \[
@@ -329,12 +326,8 @@
           \[
             P_0,P_1,\dots,P_n,\qquad P_i=(x_i,y_i)
           \]
-          <p>In a classical B-spline model, the curve is written as:</p>
-          \[
-            C(t)=\sum_i N_{i,k}(t)P_i
-          \]
-          <p>where \(N_{i,k}(t)\) are B-spline basis functions, \(k\) is the spline degree, and \(P_i\) are control points. This is the mathematical model the interface is named after.</p>
-          <p>The current browser implementation uses a lightweight Catmull-Rom spline interpolation through the ordered skeleton control points. This keeps the app fully static and avoids shipping a large numerical fitting library. For a local segment with neighboring control points \(P_{i-1},P_i,P_{i+1},P_{i+2}\), the sampled curve is:</p>
+          <p>We use a lightweight Catmull-Rom spline interpolation through the ordered skeleton control points. This keeps the app fully static and avoids shipping a large numerical fitting library. The curve is built locally from four neighboring skeleton points at a time, and the plotted curve passes through the traced control points.</p>
+          <p>For a local segment with neighboring control points \(P_{i-1},P_i,P_{i+1},P_{i+2}\), the sampled curve is:</p>
           \[
             C_i(u)=\frac12\left(
             2P_i+
@@ -343,8 +336,12 @@
             (-P_{i-1}+3P_i-3P_{i+1}+P_{i+2})u^3
             \right)
           \]
-          <p>where \(u\in[0,1]\) is the local segment parameter. The app samples these parametric segments to produce the plotted smooth curve.</p>
-          <p>The important mathematical property is that the output is parametric: it does not require the contour to be a single-valued function \(y=f(x)\). Loops, vertical tangents, and curved boundaries can be represented by \(x(t)\) and \(y(t)\) together.</p>
+          <p>where \(u\in[0,1]\) is the local segment parameter. Because each \(P_i\) is a two-dimensional point, the equation is evaluated component-wise:</p>
+          \[
+            C_i(u) = \left( x_i (u), y_i(u) \right)
+          \]
+          <p>So we sample these local cubic segments to produce the plotted smooth curve.</p>
+          <p>The important mathematical property is that the output is parametric so it does not require the contour to be a single-valued function \(y=f(x)\). Loops, vertical tangents and curved boundaries can be represented by \(x(t)\) and \(y(t)\) together.</p>
         </section>
 
         <section>
