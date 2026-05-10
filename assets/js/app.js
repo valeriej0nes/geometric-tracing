@@ -25,7 +25,6 @@ const elements = {
   imageInput: document.querySelector("#imageInput"),
   sourceCanvas: document.querySelector("#sourceCanvas"),
   edgeCanvas: document.querySelector("#edgeCanvas"),
-  processButton: document.querySelector("#processButton"),
   downloadButton: document.querySelector("#downloadButton"),
   desmosButton: document.querySelector("#desmosButton"),
   linePlot: document.querySelector("#linePlot"),
@@ -90,7 +89,6 @@ function bindEvents() {
     });
   });
 
-  elements.processButton.addEventListener("click", processCurrentImage);
   elements.downloadButton.addEventListener("click", downloadEquations);
   elements.desmosButton.addEventListener("click", openInDesmos);
 }
@@ -101,7 +99,7 @@ function watchOpenCv() {
       window.clearInterval(timer);
       elements.status.textContent = "Ready";
       elements.status.classList.add("is-ready");
-      elements.processButton.disabled = !state.imageLoaded;
+      if (state.imageLoaded && !state.processed) processCurrentImage();
     }
   }, 120);
 }
@@ -138,12 +136,11 @@ function drawSourceImage(image, options = {}) {
   ctx.drawImage(image, 0, 0, width, height);
 
   resetDerivedState(width, height);
-  elements.processButton.disabled = !window.cv?.Mat;
 
   if (options.autoProcess && window.cv?.Mat) {
     processCurrentImage();
   } else {
-    elements.equationList.innerHTML = '<p class="muted">Click Process image to extract lines.</p>';
+    elements.equationList.innerHTML = '<p class="muted">Processing starts automatically when OpenCV is ready.</p>';
   }
 }
 
@@ -289,7 +286,6 @@ function resetDerivedState(width, height) {
 
 function setProcessing(isProcessing) {
   state.isProcessing = isProcessing;
-  elements.processButton.disabled = isProcessing || !state.imageLoaded || !window.cv?.Mat;
   elements.imageInput.disabled = isProcessing;
 }
 
